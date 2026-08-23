@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Kitaplık">
+  <rect width="512" height="512" rx="112" fill="#1c2a3a"/>
+  <g transform="translate(96 104)">
+    <!-- sırt sırta iki kitap: açık bir kitabın iki yaprağı -->
+    <path d="M8 24h104a44 44 0 0 1 44 44v208a34 34 0 0 0-34-34H8z"
+          fill="none" stroke="#6bbf8f" stroke-width="26" stroke-linejoin="round"/>
+    <path d="M312 24H208a44 44 0 0 0-44 44v208a34 34 0 0 1 34-34h114z"
+          fill="none" stroke="#f6f7f9" stroke-width="26" stroke-linejoin="round"/>
+  </g>
+</svg>

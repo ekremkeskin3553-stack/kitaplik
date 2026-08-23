@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kitaplık</title>
+<meta name="description" content="Kişisel kitaplık — barkodla ekle, ara, raflara ayır, okuma ilerlemeni ve ödünç verdiklerini takip et.">
+<meta name="theme-color" content="#1c2a3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kitaplık">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-row">
+    <h1 class="brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="brand-icon"><path d="M4 4h5a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H4zM20 4h-5a3 3 0 0 0-3 3v13a2.5 2.5 0 0 1 2.5-2.5H20z"/></svg>
+      Kitaplık
+    </h1>
+    <div class="topbar-actions">
+      <button id="btn-sync" class="icon-btn" title="Şimdi eşitle" aria-label="Şimdi eşitle">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9M4 13a8 8 0 0 0 14.3 4.9"/><path d="M20 4v5h-5M4 20v-5h5"/></svg>
+      </button>
+      <button id="btn-menu" class="icon-btn" title="Menü" aria-label="Menü">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <input id="q" type="search" inputmode="search" autocomplete="off" spellcheck="false"
+           placeholder="Kitap adı, yazar, raf, ISBN…" aria-label="Kitaplıkta ara">
+    <button id="q-clear" class="q-clear" hidden aria-label="Aramayı temizle">&times;</button>
+  </div>
+
+  <div class="filters">
+    <select id="sort" aria-label="Sıralama">
+      <optgroup label="Ada göre">
+        <option value="title-asc">Ad (A → Z)</option>
+        <option value="title-desc">Ad (Z → A)</option>
+      </optgroup>
+      <optgroup label="Yazara göre">
+        <option value="author-asc">Yazar (A → Z)</option>
+        <option value="author-desc">Yazar (Z → A)</option>
+      </optgroup>
+      <optgroup label="Diğer">
+        <option value="progress-desc">İlerleme (çok → az)</option>
+        <option value="progress-asc">İlerleme (az → çok)</option>
+        <option value="shelf-asc">Rafa göre</option>
+        <option value="added-desc">Son eklenen</option>
+        <option value="relevance">Arama alakası</option>
+      </optgroup>
+    </select>
+
+    <select id="shelf-filter" aria-label="Raf filtresi">
+      <option value="">Tüm raflar</option>
+    </select>
+
+    <select id="status-filter" aria-label="Durum filtresi">
+      <option value="">Tüm durumlar</option>
+      <option value="to_read">Okunacak</option>
+      <option value="reading">Okunuyor</option>
+      <option value="read">Okundu</option>
+      <option value="__loaned">Ödünçte</option>
+    </select>
+  </div>
+</header>
+
+<div id="banner" class="banner" hidden></div>
+
+<main>
+  <div id="stats" class="stats" hidden></div>
+  <div id="list" class="list" aria-live="polite"></div>
+  <div id="empty" class="empty" hidden></div>
+</main>
+
+<div class="fab-row">
+  <button id="btn-scan" class="fab fab-secondary" title="Barkod tara" aria-label="Barkod tara">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M10 8v8M13.5 8v8M17 8v8"/></svg>
+  </button>
+  <button id="btn-add" class="fab fab-primary" title="Kitap ekle" aria-label="Kitap ekle">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+</div>
+
+
+<!-- ==================== Kitap ekle / düzenle ==================== -->
+<dialog id="book-dialog" class="sheet">
+  <form id="book-form" method="dialog">
+    <div class="sheet-head">
+      <button type="button" class="link-btn" data-close>İptal</button>
+      <strong id="book-dialog-title">Kitap Ekle</strong>
+      <button type="submit" class="link-btn primary">Kaydet</button>
+    </div>
+
+    <div class="sheet-body">
+      <div class="cover-row">
+        <div class="cover-preview"><img id="f-cover-img" alt=""><span id="f-cover-ph">Kapak yok</span></div>
+        <div class="cover-actions">
+          <label class="field">
+            <span>ISBN</span>
+            <div class="inline">
+              <input id="f-isbn" type="text" inputmode="numeric" autocomplete="off" placeholder="978…">
+              <button type="button" id="f-lookup" class="btn small">Künye çek</button>
+            </div>
+          </label>
+          <div id="f-lookup-msg" class="hint"></div>
+        </div>
+      </div>
+
+      <label class="field">
+        <span>Kitap adı *</span>
+        <input id="f-title" type="text" required autocomplete="off">
+      </label>
+
+      <label class="field">
+        <span>Yazar</span>
+        <input id="f-author" type="text" autocomplete="off" list="dl-authors">
+      </label>
+      <datalist id="dl-authors"></datalist>
+
+      <div class="grid-2">
+        <label class="field">
+          <span>Raf</span>
+          <input id="f-shelf" type="text" autocomplete="off" list="dl-shelves" placeholder="örn. Salon üst raf">
+        </label>
+        <datalist id="dl-shelves"></datalist>
+        <label class="field">
+          <span>Seri</span>
+          <input id="f-series" type="text" autocomplete="off">
+        </label>
+      </div>
+
+      <div class="grid-2">
+        <label class="field">
+          <span>Yayınevi</span>
+          <input id="f-publisher" type="text" autocomplete="off" list="dl-publishers">
+        </label>
+        <datalist id="dl-publishers"></datalist>
+        <label class="field">
+          <span>Basım yılı</span>
+          <input id="f-year" type="number" inputmode="numeric" min="0" max="2100">
+        </label>
+      </div>
+
+      <fieldset class="field-group">
+        <legend>Okuma durumu</legend>
+        <div class="segmented" role="radiogroup" aria-label="Okuma durumu">
+          <label><input type="radio" name="status" value="to_read"><span>Okunacak</span></label>
+          <label><input type="radio" name="status" value="reading"><span>Okunuyor</span></label>
+          <label><input type="radio" name="status" value="read"><span>Okundu</span></label>
+        </div>
+
+        <div class="grid-2">
+          <label class="field">
+            <span>Okunan sayfa</span>
+            <input id="f-current-page" type="number" inputmode="numeric" min="0" step="1">
+          </label>
+          <label class="field">
+            <span>Toplam sayfa</span>
+            <input id="f-page-count" type="number" inputmode="numeric" min="0" step="1">
+          </label>
+        </div>
+
+        <input id="f-progress" type="range" min="0" max="100" step="1" value="0" aria-label="Okuma ilerlemesi">
+        <div class="progress-live">
+          <div class="bar"><div id="f-progress-fill" class="bar-fill"></div></div>
+          <output id="f-progress-out">%0</output>
+        </div>
+
+        <label class="field">
+          <span>Puan</span>
+          <div id="f-rating" class="rating" role="radiogroup" aria-label="Puan"></div>
+        </label>
+      </fieldset>
+
+      <fieldset class="field-group">
+        <legend>Ödünç bilgisi</legend>
+        <label class="field">
+          <span>Kime verildi</span>
+          <input id="f-loan-to" type="text" autocomplete="off" list="dl-borrowers" placeholder="Boş bırak = ödünçte değil">
+        </label>
+        <datalist id="dl-borrowers"></datalist>
+        <div class="grid-2">
+          <label class="field">
+            <span>Veriliş tarihi</span>
+            <input id="f-loan-date" type="date">
+          </label>
+          <label class="field">
+            <span>İade tarihi</span>
+            <input id="f-loan-due" type="date">
+          </label>
+        </div>
+        <label class="check">
+          <input id="f-loan-returned" type="checkbox">
+          <span>Geri geldi</span>
+        </label>
+      </fieldset>
+
+      <label class="field">
+        <span>Etiketler <em>(virgülle ayır)</em></span>
+        <input id="f-tags" type="text" autocomplete="off">
+      </label>
+
+      <label class="field">
+        <span>Notlar</span>
+        <textarea id="f-notes" rows="3"></textarea>
+      </label>
+
+      <label class="field">
+        <span>Kapak görseli adresi</span>
+        <input id="f-cover" type="url" autocomplete="off" placeholder="https://…">
+      </label>
+
+      <button type="button" id="f-delete" class="btn danger block" hidden>Bu kitabı sil</button>
+    </div>
+  </form>
+</dialog>
+
+
+<!-- ==================== Barkod tarayıcı ==================== -->
+<dialog id="scan-dialog" class="sheet scan-sheet">
+  <div class="sheet-head">
+    <button type="button" class="link-btn" data-close>Kapat</button>
+    <strong>Barkod Tara</strong>
+    <span class="link-btn ghost" aria-hidden="true">Kapat</span>
+  </div>
+  <div class="scan-body">
+    <div class="scan-stage">
+      <video id="scan-video" playsinline muted></video>
+      <div class="scan-frame"><span></span></div>
+    </div>
+    <p id="scan-msg" class="scan-msg">Kitabın arkasındaki barkodu çerçeveye getir.</p>
+    <div class="scan-manual">
+      <label class="field">
+        <span>Ya da ISBN'i elle yaz</span>
+        <div class="inline">
+          <input id="scan-isbn" type="text" inputmode="numeric" autocomplete="off" placeholder="978…">
+          <button type="button" id="scan-isbn-go" class="btn small">Ara</button>
+        </div>
+      </label>
+    </div>
+  </div>
+</dialog>
+
+
+<!-- ==================== Menü ==================== -->
+<dialog id="menu-dialog" class="sheet menu-sheet">
+  <div class="sheet-head">
+    <button type="button" class="link-btn" data-close>Kapat</button>
+    <strong>Menü</strong>
+    <span class="link-btn ghost" aria-hidden="true">Kapat</span>
+  </div>
+  <div class="sheet-body">
+    <div id="account-box" class="account-box"></div>
+    <div class="menu-actions">
+      <button type="button" id="btn-export" class="btn block">Yedek al (JSON)</button>
+      <button type="button" id="btn-import" class="btn block">Yedekten geri yükle</button>
+      <input id="import-file" type="file" accept="application/json,.json" hidden>
+      <button type="button" id="btn-export-csv" class="btn block">CSV olarak dışa aktar</button>
+    </div>
+    <div id="menu-stats" class="menu-stats"></div>
+  </div>
+</dialog>
+
+
+<!-- ==================== Giriş ==================== -->
+<dialog id="auth-dialog" class="sheet auth-sheet">
+  <form id="auth-form" method="dialog">
+    <div class="sheet-head">
+      <button type="button" class="link-btn" data-close>Kapat</button>
+      <strong id="auth-title">Giriş Yap</strong>
+      <span class="link-btn ghost" aria-hidden="true">Kapat</span>
+    </div>
+    <div class="sheet-body">
+      <p class="hint">Telefon, tablet ve bilgisayarının aynı kitaplığı görmesi için giriş yap.</p>
+      <label class="field">
+        <span>E-posta</span>
+        <input id="auth-email" type="email" autocomplete="username" required>
+      </label>
+      <label class="field">
+        <span>Parola</span>
+        <input id="auth-password" type="password" autocomplete="current-password" required minlength="6">
+      </label>
+      <div id="auth-msg" class="hint"></div>
+      <button type="submit" id="auth-submit" class="btn primary block">Giriş yap</button>
+      <button type="button" id="auth-toggle" class="link-btn block">Hesabım yok, kayıt ol</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="config.js"></script>
+<script src="search.js"></script>
+<script src="db.js"></script>
+<script src="sync.js"></script>
+<script src="isbn.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
