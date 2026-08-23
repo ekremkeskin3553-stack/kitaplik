@@ -1024,10 +1024,39 @@
     if (action) history.replaceState(null, '', location.pathname);
 
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-      navigator.serviceWorker.register('sw.js').catch(function (e) {
-        console.warn('Service worker kaydedilemedi:', e);
-      });
+      registerServiceWorker();
     }
+  }
+
+  /* Service worker kaydı ve otomatik güncelleme.
+   *
+   * Çevrimdışı çalışabilmek için dosyalar önbellekten sunuluyor; bunun yan
+   * etkisi, yeni bir sürüm yayınlandığında kullanıcının bir süre eskisini
+   * görmesi. Aşağıdaki akış bunu kendiliğinden çözüyor: yeni service worker
+   * devreye girip sayfayı devraldığı anda sayfa bir kez yeniden yükleniyor,
+   * böylece güncelleme için elle yenilemek gerekmiyor. */
+  function registerServiceWorker() {
+    // İlk kurulumda da controllerchange tetiklenir; o durumda yeniden
+    // yüklemeye gerek yok, zaten en güncel dosyalar yüklü.
+    var hadController = !!navigator.serviceWorker.controller;
+    var reloading = false;
+
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadController || reloading) return;
+      reloading = true;
+      location.reload();
+    });
+
+    navigator.serviceWorker.register('sw.js').then(function (reg) {
+      // Ana ekrandan açılan uygulama günlerce kapanmayabilir; her geri
+      // dönüldüğünde yeni sürüm var mı diye bakıyoruz.
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) reg.update().catch(function () {});
+      });
+      window.addEventListener('online', function () { reg.update().catch(function () {}); });
+    }).catch(function (e) {
+      console.warn('Service worker kaydedilemedi:', e);
+    });
   }
 
   if (document.readyState === 'loading') {
