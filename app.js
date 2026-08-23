@@ -301,8 +301,8 @@
     $('f-page-count').value = b.page_count || '';
     $('f-tags').value = Array.isArray(b.tags) ? b.tags.join(', ') : (b.tags || '');
     $('f-notes').value = b.notes || '';
-    $('f-cover').value = b.cover_url || '';
-    $('f-cover-img').src = b.cover_url || '';
+    setCover(b.cover_url || '');
+    setMsg($('f-cover-msg'), '', '');
     $('f-loan-to').value = b.loan_to || '';
     $('f-loan-date').value = b.loan_date || '';
     $('f-loan-due').value = b.loan_due || '';
@@ -344,7 +344,7 @@
       progress_pct: total ? null : (Number($('f-progress').value) || 0),
       status: statusEl ? statusEl.value : 'to_read',
       rating: ratingValue || null,
-      cover_url: $('f-cover').value.trim(),
+      cover_url: coverValue,
       shelf: $('f-shelf').value.trim(),
       series: $('f-series').value.trim(),
       tags: $('f-tags').value.split(',').map(function (s) { return s.trim(); }).filter(Boolean),
@@ -373,6 +373,113 @@
   }
 
   /* ==================================================================
+   * Kapak görseli — cihazdan seçme
+   *
+   * Görsel, kaydın içinde data URI olarak saklanır; ayrı bir dosya deposu
+   * kurmaya gerek kalmadan senkronla birlikte diğer cihazlara da gider.
+   * Bunun bedeli boyut: telefon fotoğrafları 3–5 MB gelir ve base64'e
+   * çevrilince bir kat daha büyür. Bu yüzden kaydetmeden önce küçültüp
+   * sıkıştırıyoruz — kapak görseli için 480 piksel fazlasıyla yeterli.
+   * ================================================================ */
+
+  var MAX_COVER_EDGE = 480;
+  var MAX_COVER_BYTES = 220 * 1024;   // data URI olarak kabaca üst sınır
+
+  /** Dosyayı EXIF dönüşünü koruyarak çöz. Telefonlar fotoğrafı yan çekip
+   *  "döndür" bilgisini ayrı tutar; bunu uygulamazsak kapaklar yan görünür. */
+  function decodeImage(file) {
+    if (window.createImageBitmap) {
+      return createImageBitmap(file, { imageOrientation: 'from-image' })
+        .catch(function () { return decodeViaImg(file); });
+    }
+    return decodeViaImg(file);
+  }
+
+  function decodeViaImg(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Görsel açılamadı.')); };
+      img.src = url;
+    });
+  }
+
+  function drawScaled(src, maxEdge, quality) {
+    var w = src.width || src.naturalWidth;
+    var h = src.height || src.naturalHeight;
+    var scale = Math.min(1, maxEdge / Math.max(w, h));
+    var cw = Math.max(1, Math.round(w * scale));
+    var ch = Math.max(1, Math.round(h * scale));
+
+    var c = document.createElement('canvas');
+    c.width = cw;
+    c.height = ch;
+    var x = c.getContext('2d');
+    // Saydam PNG'ler JPEG'e çevrilince siyah zemin alır; önce beyaza boyuyoruz.
+    x.fillStyle = '#ffffff';
+    x.fillRect(0, 0, cw, ch);
+    x.drawImage(src, 0, 0, cw, ch);
+    return c.toDataURL('image/jpeg', quality);
+  }
+
+  /** Küçült, sıkıştır, gerekirse sınıra inene kadar kaliteyi düşür. */
+  function prepareCover(file) {
+    return decodeImage(file).then(function (src) {
+      var attempts = [
+        { edge: MAX_COVER_EDGE, q: 0.72 },
+        { edge: MAX_COVER_EDGE, q: 0.55 },
+        { edge: 360, q: 0.5 },
+        { edge: 280, q: 0.45 },
+      ];
+      var out = null;
+      for (var i = 0; i < attempts.length; i++) {
+        out = drawScaled(src, attempts[i].edge, attempts[i].q);
+        if (out.length <= MAX_COVER_BYTES) break;
+      }
+      if (src.close) src.close();       // ImageBitmap belleğini bırak
+      return out;
+    });
+  }
+
+  var coverValue = '';
+
+  /** Kapağı tek yerden ayarla: önizleme, kaldır düğmesi ve adres alanı
+   *  hep tutarlı kalsın. */
+  function setCover(value, opts) {
+    opts = opts || {};
+    coverValue = value || '';
+    var isData = coverValue.indexOf('data:') === 0;
+
+    $('f-cover-img').src = coverValue;
+    $('f-cover-clear').hidden = !coverValue;
+
+    // Cihazdan seçilen görselin base64'ünü adres kutusuna basmak anlamsız
+    // (on binlerce karakter); kutuyu boş bırakıp durumu yazıyla anlatıyoruz.
+    if (!opts.keepUrlField) {
+      $('f-cover').value = isData ? '' : coverValue;
+    }
+    $('f-cover').placeholder = isData ? 'Cihazdan görsel seçildi' : 'https://…';
+  }
+
+  function pickCover(file) {
+    var msg = $('f-cover-msg');
+    if (!file) return;
+    if (!/^image\//.test(file.type)) {
+      setMsg(msg, 'Bu bir görsel dosyası değil.', 'error');
+      return;
+    }
+    setMsg(msg, 'Görsel işleniyor…', '');
+    prepareCover(file).then(function (dataUrl) {
+      setCover(dataUrl);
+      var kb = Math.round(dataUrl.length / 1024);
+      setMsg(msg, 'Kapak eklendi (' + kb + ' KB). Kaydedince diğer cihazlara da gider.', 'ok');
+    }).catch(function (e) {
+      setMsg(msg, 'Görsel işlenemedi: ' + e.message, 'error');
+    });
+  }
+
+  /* ==================================================================
    * ISBN künye çekme
    * ================================================================ */
 
@@ -385,10 +492,7 @@
       $('f-page-count').value = data.page_count;
       syncProgressFromPages();
     }
-    if (data.cover_url && !$('f-cover').value) {
-      $('f-cover').value = data.cover_url;
-      $('f-cover-img').src = data.cover_url;
-    }
+    if (data.cover_url && !coverValue) setCover(data.cover_url);
     if (data.isbn) $('f-isbn').value = data.isbn;
   }
 
@@ -771,7 +875,20 @@
     $('f-page-count').addEventListener('input', syncProgressFromPages);
     $('f-current-page').addEventListener('input', syncProgressFromPages);
     $('f-progress').addEventListener('input', syncPagesFromProgress);
-    $('f-cover').addEventListener('input', function () { $('f-cover-img').src = this.value.trim(); });
+
+    // --- kapak görseli ---
+    $('f-cover').addEventListener('input', function () {
+      setCover(this.value.trim(), { keepUrlField: true });
+    });
+    $('f-cover-pick').addEventListener('click', function () { $('f-cover-file').click(); });
+    $('f-cover-file').addEventListener('change', function () {
+      if (this.files && this.files[0]) pickCover(this.files[0]);
+      this.value = '';   // aynı dosya art arda seçilebilsin
+    });
+    $('f-cover-clear').addEventListener('click', function () {
+      setCover('');
+      setMsg($('f-cover-msg'), '', '');
+    });
 
     // Ödünç alan yazılınca veriliş tarihini kendiliğinden bugüne kur.
     $('f-loan-to').addEventListener('change', function () {

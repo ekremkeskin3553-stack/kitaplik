@@ -182,9 +182,27 @@
     return DB.dirtyBooks().then(function (dirty) {
       if (!dirty.length) return 0;
 
-      // Büyük ilk yüklemelerde istek boyutunu makul tutmak için parçalara böl.
+      // İstekleri hem adet hem BOYUT olarak sınırla. Sadece adede bakmak
+      // yetmiyor: cihazdan eklenen kapak görselleri kaydın içinde data URI
+      // olarak durduğu için tek bir kitap yüz kilobayt olabiliyor ve 200'lük
+      // bir yığın sunucunun kabul etmeyeceği kadar büyük bir gövde üretiyor.
+      var MAX_ROWS = 200;
+      var MAX_BYTES = 3 * 1024 * 1024;
       var chunks = [];
-      for (var i = 0; i < dirty.length; i += 200) chunks.push(dirty.slice(i, i + 200));
+      var cur = [];
+      var curBytes = 0;
+
+      for (var i = 0; i < dirty.length; i++) {
+        var approx = (dirty[i].cover_url || '').length + 800;   // kaba boyut tahmini
+        if (cur.length && (cur.length >= MAX_ROWS || curBytes + approx > MAX_BYTES)) {
+          chunks.push(cur);
+          cur = [];
+          curBytes = 0;
+        }
+        cur.push(dirty[i]);
+        curBytes += approx;
+      }
+      if (cur.length) chunks.push(cur);
 
       return chunks.reduce(function (p, chunk) {
         return p.then(function () {

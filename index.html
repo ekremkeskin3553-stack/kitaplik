@@ -103,6 +103,13 @@
       <div class="cover-row">
         <div class="cover-preview"><img id="f-cover-img" alt=""><span id="f-cover-ph">Kapak yok</span></div>
         <div class="cover-actions">
+          <div class="cover-btns">
+            <button type="button" id="f-cover-pick" class="btn small">Görsel seç</button>
+            <button type="button" id="f-cover-clear" class="btn small" hidden>Kaldır</button>
+          </div>
+          <input id="f-cover-file" type="file" accept="image/*" hidden>
+          <div id="f-cover-msg" class="hint"></div>
+
           <label class="field">
             <span>ISBN</span>
             <div class="inline">
@@ -214,7 +221,7 @@
       </label>
 
       <label class="field">
-        <span>Kapak görseli adresi</span>
+        <span>Kapak görseli adresi <em>(internetten bir görselin bağlantısı)</em></span>
         <input id="f-cover" type="url" autocomplete="off" placeholder="https://…">
       </label>
 

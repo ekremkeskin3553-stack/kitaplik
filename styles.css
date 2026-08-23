@@ -226,12 +226,17 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 1
 
 .card-author { font-size: 13.5px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* display:block şart — kart içinde bunlar <span> olarak yazılıyor ve inline
+ * elemanlar genişlik/yükseklik değerlerini yok sayar; blok yapmadan çubuk
+ * hiç dolmaz. */
 .bar {
+  display: block;
   height: 5px; border-radius: 99px;
   background: var(--surface-2);
   overflow: hidden;
 }
 .bar-fill {
+  display: block;
   height: 100%; width: 0;
   background: var(--accent);
   border-radius: 99px;
@@ -394,6 +399,8 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .cover-preview img[src]:not([src=""]) { display: block; }
 .cover-preview img[src]:not([src=""]) + span { display: none; }
 .cover-actions { display: grid; gap: 6px; }
+.cover-btns { display: flex; gap: 6px; }
+.cover-btns .btn { flex: 1 1 auto; }
 
 .hint { font-size: 12.5px; color: var(--text-dim); line-height: 1.4; }
 .hint.error { color: var(--danger); }
