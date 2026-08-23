@@ -680,12 +680,39 @@
       '<div class="sub">Cihazlar arası senkron açık.</div>' +
       '<button class="btn block" id="acc-signout" type="button">Çıkış yap</button>';
     $('acc-signout').addEventListener('click', function () {
-      if (!confirm('Çıkış yapılsın mı? Bu cihazdaki yerel kopya silinecek, veriler sunucuda kalacak.')) return;
-      Sync.signOut().then(function () {
-        state.books = [];
-        render();
-        renderAccount();
-        toast('Çıkış yapıldı.');
+      // Çıkış yerel kopyayı siliyor. Henüz sunucuya gitmemiş kayıtlar varsa
+      // bu kalıcı veri kaybı demek — önce onları göndermeyi deniyoruz,
+      // gönderilemiyorsa kullanıcıyı açıkça uyarıyoruz.
+      var pending = state.books.filter(function (b) { return b.dirty === 1; }).length;
+      var proceed = function () {
+        Sync.signOut().then(function () {
+          state.books = [];
+          render();
+          renderAccount();
+          toast('Çıkış yapıldı.');
+        });
+      };
+
+      if (!pending) {
+        if (confirm('Çıkış yapılsın mı? Bu cihazdaki yerel kopya silinecek, veriler sunucuda kalacak.')) proceed();
+        return;
+      }
+
+      toast('Önce bekleyen ' + pending + ' değişiklik gönderiliyor…');
+      Sync.sync().then(function () {
+        return DB.dirtyBooks();
+      }).then(function (stillDirty) {
+        if (!stillDirty.length) {
+          if (confirm('Bekleyen değişiklikler gönderildi. Çıkış yapılsın mı?')) proceed();
+          return;
+        }
+        var ok = confirm(
+          'DİKKAT: ' + stillDirty.length + ' kayıt henüz sunucuya gönderilemedi ' +
+          '(bağlantı sorunu olabilir). Şimdi çıkarsan bu kayıtlar BU CİHAZDAN SİLİNİR ' +
+          've geri getirilemez.\n\nYine de çıkmak istiyor musun?\n\n' +
+          'İptal edip menüden "Yedek al" ile kayıtlarını dosyaya indirebilirsin.'
+        );
+        if (ok) proceed();
       });
     });
   }

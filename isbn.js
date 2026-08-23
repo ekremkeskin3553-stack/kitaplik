@@ -150,7 +150,16 @@
   function scannerSupport() {
     var hasCamera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
     var hasDetector = typeof window.BarcodeDetector !== 'undefined';
-    return { camera: hasCamera, detector: hasDetector, ok: hasCamera && hasDetector };
+    var hasFallback = typeof window.EAN !== 'undefined';
+    return {
+      camera: hasCamera,
+      detector: hasDetector,
+      fallback: hasFallback,
+      // Kamera varsa tarama yapılabilir: tarayıcının kendi çözücüsü yoksa
+      // kendi EAN-13 çözücümüz devreye giriyor (iOS böyle çalışıyor).
+      ok: hasCamera && (hasDetector || hasFallback),
+      motor: hasDetector ? 'tarayıcı' : (hasFallback ? 'dahili' : 'yok'),
+    };
   }
 
   /**
@@ -162,16 +171,42 @@
   function startScanner(video, onFound) {
     var sup = scannerSupport();
     if (!sup.camera) return Promise.reject(new Error('Bu cihaz/tarayıcı kamera erişimine izin vermiyor.'));
-    if (!sup.detector) return Promise.reject(new Error('NO_DETECTOR'));
+    if (!sup.ok) return Promise.reject(new Error('NO_DETECTOR'));
 
-    var detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
+    // Tarayıcının kendi çözücüsü varsa onu kullan (daha hızlı ve daha çok
+    // biçim tanır); yoksa kendi EAN-13 çözücümüze düş. iOS'ta ikinci yol
+    // devreye giriyor çünkü orada BarcodeDetector hiçbir tarayıcıda yok.
+    var detector = sup.detector
+      ? new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] })
+      : null;
+
+    // Dahili çözücü için kare yakalama tuvali
+    var canvas = null, cctx = null;
+    if (!detector) {
+      canvas = document.createElement('canvas');
+      cctx = canvas.getContext('2d', { willReadFrequently: true });
+    }
+
     var stream = null;
     var timer = null;
     var stopped = false;
+    var busy = false;
     // Tek karelik yanlış okumaları elemek için aynı kodu iki kez üst üste
     // görmeden kabul etmiyoruz.
     var lastCode = null;
     var repeats = 0;
+
+    /** Okunan kodu doğrula ve yeterince tekrarlandıysa kabul et. */
+    function consider(raw) {
+      raw = clean(raw);
+      if (!looksLikeBook(raw)) return false;
+      if (raw === lastCode) repeats++; else { lastCode = raw; repeats = 1; }
+      if (repeats < 2) return false;
+      if (navigator.vibrate) navigator.vibrate(60);
+      stop();
+      onFound(raw);
+      return true;
+    }
 
     function stop() {
       stopped = true;
@@ -194,28 +229,36 @@
       return video.play().catch(function () { /* autoplay engeli — kullanıcı dokununca oynar */ });
     }).then(function () {
       timer = setInterval(function () {
-        if (stopped || video.readyState < 2) return;
-        detector.detect(video).then(function (codes) {
-          if (!codes || !codes.length || stopped) return;
-          for (var i = 0; i < codes.length; i++) {
-            var raw = clean(codes[i].rawValue);
-            if (!looksLikeBook(raw)) continue;
+        if (stopped || busy || video.readyState < 2) return;
 
-            if (raw === lastCode) {
-              repeats++;
-            } else {
-              lastCode = raw;
-              repeats = 1;
+        if (detector) {
+          busy = true;
+          detector.detect(video).then(function (codes) {
+            busy = false;
+            if (!codes || stopped) return;
+            for (var i = 0; i < codes.length; i++) {
+              if (consider(codes[i].rawValue)) return;
             }
-            if (repeats >= 2) {
-              if (navigator.vibrate) navigator.vibrate(60);
-              stop();
-              onFound(raw);
-              return;
-            }
-          }
-        }).catch(function () { /* tek karelik okuma hatası — döngü devam etsin */ });
-      }, 250);
+          }).catch(function () { busy = false; });
+          return;
+        }
+
+        // --- dahili çözücü ---
+        // Kareyi tuvale al ve tara. Çözünürlüğü sınırlıyoruz: barkodun
+        // çubuklarını ayırt etmek için 640 piksel genişlik yeterli ve
+        // telefonda her karede tam çözünürlük işlemek gereksiz yavaşlatır.
+        var vw = video.videoWidth, vh = video.videoHeight;
+        if (!vw || !vh) return;
+        var scale = Math.min(1, 640 / vw);
+        var cw = Math.round(vw * scale), ch = Math.round(vh * scale);
+        if (canvas.width !== cw || canvas.height !== ch) {
+          canvas.width = cw;
+          canvas.height = ch;
+        }
+        cctx.drawImage(video, 0, 0, cw, ch);
+        var hit = window.EAN.decodeFrame(cctx, cw, ch);
+        if (hit) consider(hit);
+      }, detector ? 250 : 120);
 
       return { stop: stop };
     }).catch(function (err) {
