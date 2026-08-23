@@ -118,6 +118,7 @@
             </div>
           </label>
           <div id="f-lookup-msg" class="hint"></div>
+          <button type="button" id="f-search-title" class="btn small block">Adıyla ara</button>
         </div>
       </div>
 
@@ -253,6 +254,29 @@
         </div>
       </label>
     </div>
+  </div>
+</dialog>
+
+
+<!-- ==================== Adıyla kitap arama ==================== -->
+<dialog id="find-dialog" class="sheet">
+  <div class="sheet-head">
+    <button type="button" class="link-btn" data-close>Kapat</button>
+    <strong>Kitabı Adıyla Ara</strong>
+    <span class="link-btn ghost" aria-hidden="true">Kapat</span>
+  </div>
+  <div class="sheet-body">
+    <p class="hint">Barkodu okunmayan ya da künyesi bulunamayan kitapları burada
+      adıyla veya yazarıyla arayabilirsin. Listeden seçtiğinde bilgiler forma dolar.</p>
+    <label class="field">
+      <span>Kitap adı veya yazar</span>
+      <div class="inline">
+        <input id="find-q" type="search" autocomplete="off" placeholder="örn. Tutunamayanlar">
+        <button type="button" id="find-go" class="btn small primary">Ara</button>
+      </div>
+    </label>
+    <div id="find-msg" class="hint"></div>
+    <div id="find-results" class="find-results"></div>
   </div>
 </dialog>
 

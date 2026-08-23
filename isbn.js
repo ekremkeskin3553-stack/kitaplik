@@ -144,6 +144,106 @@
   }
 
   /* ------------------------------------------------------------------
+   * Ada / yazara göre arama
+   *
+   * ISBN her zaman işe yaramıyor: uluslararası kataloglarda Türkiye'de
+   * basılmış kitapların önemli bir kısmı kayıtlı değil. Barkod okunsa bile
+   * künye boş dönebiliyor. Bu durumda kitabı adıyla aratıp çıkan listeden
+   * seçmek, bütün alanları elle doldurmaktan çok daha hızlı.
+   * ---------------------------------------------------------------- */
+
+  function searchGoogle(query) {
+    var url = 'https://www.googleapis.com/books/v1/volumes?maxResults=12&q=' + encodeURIComponent(query);
+    return fetchJson(url).then(function (j) {
+      return (j.items || []).map(function (it) {
+        var v = it.volumeInfo || {};
+        var img = v.imageLinks || {};
+        var ids = v.industryIdentifiers || [];
+        var isbn13 = '';
+        for (var i = 0; i < ids.length; i++) {
+          if (ids[i].type === 'ISBN_13') { isbn13 = ids[i].identifier; break; }
+        }
+        return {
+          title: v.title || '',
+          author: (v.authors || []).join(', '),
+          publisher: v.publisher || '',
+          published_year: v.publishedDate ? Number(String(v.publishedDate).slice(0, 4)) || null : null,
+          page_count: v.pageCount || null,
+          cover_url: (img.thumbnail || img.smallThumbnail || '').replace(/^http:/, 'https:'),
+          isbn: isbn13,
+          source: 'Google Books',
+        };
+      });
+    });
+  }
+
+  function searchOpenLibrary(query) {
+    var url = 'https://openlibrary.org/search.json?limit=12&fields=title,author_name,' +
+              'first_publish_year,isbn,cover_i,publisher,number_of_pages_median&q=' +
+              encodeURIComponent(query);
+    return fetchJson(url).then(function (j) {
+      return (j.docs || []).map(function (d) {
+        // Kayıtta birden çok baskının ISBN'i olabiliyor; 13 haneli olanı
+        // tercih ediyoruz çünkü barkodla okunan biçim o.
+        var list = d.isbn || [];
+        var pick = '';
+        for (var i = 0; i < list.length; i++) {
+          if (String(list[i]).length === 13) { pick = list[i]; break; }
+        }
+        if (!pick) pick = list[0] || '';
+
+        return {
+          title: d.title || '',
+          author: (d.author_name || []).join(', '),
+          publisher: (d.publisher || [])[0] || '',
+          published_year: d.first_publish_year || null,
+          page_count: d.number_of_pages_median || null,
+          cover_url: d.cover_i ? 'https://covers.openlibrary.org/b/id/' + d.cover_i + '-M.jpg' : '',
+          isbn: pick,
+          source: 'Open Library',
+        };
+      });
+    });
+  }
+
+  /** Aynı kitabın iki kaynaktan gelen kaydını tek satıra indir. */
+  function dedupe(list) {
+    var seen = {}, out = [];
+    list.forEach(function (r) {
+      if (!r.title) return;
+      var key = (r.title + '|' + r.author).toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (seen[key]) {
+        // Aynı kitap: eksik alanları diğer kaynaktan tamamla
+        var prev = seen[key];
+        Object.keys(r).forEach(function (k) { if (!prev[k] && r[k]) prev[k] = r[k]; });
+        return;
+      }
+      seen[key] = r;
+      out.push(r);
+    });
+    return out;
+  }
+
+  /**
+   * Kitap adı / yazar ile ara.
+   * İki kaynak paralel sorgulanır; biri hata verse bile diğerinin sonuçları
+   * gösterilir (Google Books zaman zaman hız sınırı uyguluyor).
+   * @returns {Promise<Array>}
+   */
+  function search(query) {
+    query = String(query || '').trim();
+    if (query.length < 2) return Promise.resolve([]);
+
+    var jobs = [
+      searchGoogle(query).catch(function () { return []; }),
+      searchOpenLibrary(query).catch(function () { return []; }),
+    ];
+    return Promise.all(jobs).then(function (res) {
+      return dedupe(res[0].concat(res[1])).slice(0, 20);
+    });
+  }
+
+  /* ------------------------------------------------------------------
    * Kamera ile barkod okuma
    * ---------------------------------------------------------------- */
 
@@ -279,6 +379,7 @@
     isValid: isValid,
     looksLikeBook: looksLikeBook,
     lookup: lookup,
+    search: search,
     scannerSupport: scannerSupport,
     startScanner: startScanner,
   };

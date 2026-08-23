@@ -527,6 +527,77 @@
   }
 
   /* ==================================================================
+   * Adıyla kitap arama
+   *
+   * ISBN'i kataloglarda bulunmayan kitaplar için kaçış yolu. Uluslararası
+   * kataloglarda Türkiye baskılarının önemli bir kısmı kayıtlı olmadığından
+   * barkod okunsa bile künye boş dönebiliyor; bu durumda adla arayıp
+   * listeden seçmek bütün alanları elle doldurmaktan çok daha hızlı.
+   * ================================================================ */
+
+  var findResults = [];
+
+  function openFind(prefill) {
+    $('find-q').value = prefill || $('f-title').value.trim() || '';
+    $('find-results').innerHTML = '';
+    setMsg($('find-msg'), '', '');
+    $('find-dialog').showModal();
+    if ($('find-q').value) runFind();
+    else setTimeout(function () { $('find-q').focus(); }, 120);
+  }
+
+  function runFind() {
+    var q = $('find-q').value.trim();
+    var msg = $('find-msg');
+    if (q.length < 2) { setMsg(msg, 'En az iki harf yaz.', 'error'); return; }
+    if (!navigator.onLine) { setMsg(msg, 'Çevrimdışısın — arama yapılamaz.', 'error'); return; }
+
+    setMsg(msg, 'Aranıyor…', '');
+    $('find-results').innerHTML = '';
+
+    ISBN.search(q).then(function (list) {
+      findResults = list;
+      if (!list.length) {
+        setMsg(msg, 'Sonuç bulunamadı. Farklı bir yazım deneyebilir ya da bilgileri elle girebilirsin.', 'error');
+        return;
+      }
+      setMsg(msg, list.length + ' sonuç — birine dokunarak forma aktar.', 'ok');
+      $('find-results').innerHTML = list.map(function (r, i) {
+        var alt = [r.author, r.publisher, r.published_year].filter(Boolean).join(' · ');
+        return '<button type="button" class="find-row" data-i="' + i + '">' +
+            '<span class="find-cover">' +
+              (r.cover_url ? '<img src="' + esc(r.cover_url) + '" alt="" loading="lazy" onerror="this.remove()">' : '') +
+            '</span>' +
+            '<span class="find-info">' +
+              '<span class="find-title">' + esc(r.title) + '</span>' +
+              (alt ? '<span class="find-sub">' + esc(alt) + '</span>' : '') +
+              '<span class="find-src">' + esc(r.source) + (r.isbn ? ' · ' + esc(r.isbn) : '') + '</span>' +
+            '</span>' +
+          '</button>';
+      }).join('');
+    }).catch(function (e) {
+      setMsg(msg, 'Arama başarısız: ' + e.message, 'error');
+    });
+  }
+
+  /** Seçilen sonucu forma aktar. Kullanıcının daha önce yazdığı bir değer
+   *  varsa üzerine yazmıyoruz — elle girdiği bilgi kaynaktan gelenden değerli. */
+  function applyFound(r) {
+    if (r.title && !$('f-title').value) $('f-title').value = r.title;
+    if (r.author && !$('f-author').value) $('f-author').value = r.author;
+    if (r.publisher && !$('f-publisher').value) $('f-publisher').value = r.publisher;
+    if (r.published_year && !$('f-year').value) $('f-year').value = r.published_year;
+    if (r.isbn && !$('f-isbn').value) $('f-isbn').value = r.isbn;
+    if (r.page_count && !$('f-page-count').value) {
+      $('f-page-count').value = r.page_count;
+      syncProgressFromPages();
+    }
+    if (r.cover_url && !coverValue) setCover(r.cover_url);
+    $('find-dialog').close();
+    toast('Bilgiler forma aktarıldı — kontrol edip kaydet.');
+  }
+
+  /* ==================================================================
    * Barkod tarayıcı
    * ================================================================ */
 
@@ -896,7 +967,24 @@
     });
 
     $('f-lookup').addEventListener('click', function () {
-      doLookup($('f-isbn').value, $('f-lookup-msg')).then(function (d) { if (d) applyLookup(d); });
+      doLookup($('f-isbn').value, $('f-lookup-msg')).then(function (d) {
+        if (d) applyLookup(d);
+        // ISBN kataloglarda yoksa kullanıcıyı çıkmaz sokakta bırakmayalım
+        else openFind();
+      });
+    });
+
+    // --- adıyla arama ---
+    $('f-search-title').addEventListener('click', function () { openFind(); });
+    $('find-go').addEventListener('click', runFind);
+    $('find-q').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); runFind(); }
+    });
+    $('find-results').addEventListener('click', function (e) {
+      var row = e.target.closest('.find-row');
+      if (!row) return;
+      var r = findResults[Number(row.dataset.i)];
+      if (r) applyFound(r);
     });
 
     $('f-page-count').addEventListener('input', syncProgressFromPages);
