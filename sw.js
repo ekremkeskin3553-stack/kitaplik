@@ -8,7 +8,7 @@
  * eski önbellek temizlenir ve kullanıcı yeni sürümü alır.
  */
 
-var CACHE = 'kitaplik-v1';
+var CACHE = 'kitaplik-v2';
 var COVERS = 'kitaplik-covers-v1';
 
 // Yollar göreli: uygulama alan adının kökünde de, /kitaplik/ alt yolunda da
