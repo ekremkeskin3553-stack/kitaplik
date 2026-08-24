@@ -206,6 +206,7 @@
     'id', 'title', 'author', 'isbn', 'publisher', 'published_year', 'page_count',
     'current_page', 'progress_pct', 'status', 'rating', 'cover_url', 'shelf', 'series', 'tags',
     'notes', 'loan_to', 'loan_date', 'loan_due', 'loan_returned',
+    'is_public',
     'created_at', 'updated_at', 'deleted',
   ];
 
@@ -284,16 +285,40 @@
 
   /** Sunucuda son çekimden sonra değişenleri al. */
   function pull() {
+    var me = currentUser() ? currentUser().id : null;
+    if (!me) return Promise.resolve(0);
+
     return DB.getMeta('lastPulled', null).then(function (since) {
-      var q = '/books?select=*&order=updated_at.asc&limit=1000';
+      // user_id filtresi ŞART. Sosyal katmandan önce güvenlik kuralı yalnızca
+      // kendi kitaplarını döndürdüğü için gereksizdi; artık başkalarının
+      // herkese açık kitaplarını da döndürüyor ve filtresiz sorgu onları da
+      // kullanıcının kendi kitaplığına indiriyordu.
+      var q = '/books?select=*&user_id=eq.' + me + '&order=updated_at.asc&limit=1000';
       if (since) q += '&updated_at=gt.' + encodeURIComponent(since);
 
       return restFetch(q).then(function (rows) {
-        if (!rows || !rows.length) return 0;
-
         return DB.allBooks().then(function (localList) {
           var localById = {};
           localList.forEach(function (b) { localById[b.id] = b; });
+
+          // Temizlik: bir zamanlar filtresiz sorgu yüzünden içeri sızmış olan
+          // başkasına ait kayıtları yerelden at. Sunucudan yeni kayıt gelmese
+          // de çalışması gerekiyor, o yüzden boş sonuç kontrolünden ÖNCE.
+          var yabanci = localList.filter(function (b) {
+            return b.user_id && b.user_id !== me;
+          });
+          var temizlik = Promise.resolve();
+          if (yabanci.length) {
+            console.warn('[senkron] başkasına ait ' + yabanci.length + ' kayıt yerelden temizleniyor');
+            yabanci.forEach(function (b) { delete localById[b.id]; });
+            temizlik = DB.removeMany(yabanci.map(function (b) { return b.id; }));
+          }
+
+          if (!rows || !rows.length) {
+            // Dönen sayı "ekranın tazelenmesi gereken kayıt sayısı" anlamına
+            // geliyor; temizlik de ekranı değiştirdiği için sayılıyor.
+            return temizlik.then(function () { return yabanci.length; });
+          }
 
           var toWrite = [];
           var newest = since;
@@ -308,9 +333,10 @@
             toWrite.push(row);
           });
 
-          return DB.putManyRemote(toWrite)
+          return temizlik
+            .then(function () { return DB.putManyRemote(toWrite); })
             .then(function () { return DB.setMeta('lastPulled', newest); })
-            .then(function () { return toWrite.length; });
+            .then(function () { return toWrite.length + yabanci.length; });
         });
       });
     });

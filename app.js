@@ -307,6 +307,7 @@
     $('f-loan-date').value = b.loan_date || '';
     $('f-loan-due').value = b.loan_due || '';
     $('f-loan-returned').checked = !!b.loan_returned;
+    $('f-public').checked = !!b.is_public;
 
     var status = b.status || 'to_read';
     var radios = document.querySelectorAll('input[name="status"]');
@@ -354,6 +355,7 @@
       loan_date: loanTo ? ($('f-loan-date').value || todayISO()) : null,
       loan_due: loanTo ? ($('f-loan-due').value || null) : null,
       loan_returned: loanTo ? $('f-loan-returned').checked : false,
+      is_public: $('f-public').checked,
       deleted: false,
     };
     return b;
@@ -1196,7 +1198,18 @@
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       registerServiceWorker();
     }
+
+    // Sosyal ekranlar ayrı bir dosyada; açılışta adres çubuğundaki sayfayı çiz.
+    if (window.Pages) Pages.route();
   }
+
+  /* Sosyal ekranların uygulamaya ihtiyaç duyduğu birkaç kanca. Tüm iç
+   * durumu dışarı açmak yerine yalnızca gerekli olanlar veriliyor. */
+  window.KitaplikApp = {
+    openAuth: openAuth,
+    reload: function () { return reloadFromDb(); },
+    toast: toast,
+  };
 
   /* Service worker kaydı ve otomatik güncelleme.
    *

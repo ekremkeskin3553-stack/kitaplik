@@ -23,6 +23,9 @@
       Kitaplık
     </h1>
     <div class="topbar-actions">
+      <a id="btn-discover" class="icon-btn" href="#/kesfet" title="Keşfet" aria-label="Keşfet">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16.5 7.5a3 3 0 0 1 0 5.5M18 19a5 5 0 0 0-2.5-4.3"/></svg>
+      </a>
       <button id="btn-sync" class="icon-btn" title="Şimdi eşitle" aria-label="Şimdi eşitle">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9M4 13a8 8 0 0 0 14.3 4.9"/><path d="M20 4v5h-5M4 20v-5h5"/></svg>
       </button>
@@ -32,14 +35,14 @@
     </div>
   </div>
 
-  <div class="search-wrap">
+  <div class="search-wrap" id="search-wrap">
     <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
     <input id="q" type="search" inputmode="search" autocomplete="off" spellcheck="false"
            placeholder="Kitap adı, yazar, raf, ISBN…" aria-label="Kitaplıkta ara">
     <button id="q-clear" class="q-clear" hidden aria-label="Aramayı temizle">&times;</button>
   </div>
 
-  <div class="filters">
+  <div class="filters" id="filters">
     <select id="sort" aria-label="Sıralama">
       <optgroup label="Ada göre">
         <option value="title-asc">Ad (A → Z)</option>
@@ -80,7 +83,9 @@
   <div id="empty" class="empty" hidden></div>
 </main>
 
-<div class="fab-row">
+<div id="social-view" class="social-view" hidden></div>
+
+<div class="fab-row" id="fab-row">
   <button id="btn-scan" class="fab fab-secondary" title="Barkod tara" aria-label="Barkod tara">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M10 8v8M13.5 8v8M17 8v8"/></svg>
   </button>
@@ -226,6 +231,11 @@
         <input id="f-cover" type="url" autocomplete="off" placeholder="https://…">
       </label>
 
+      <label class="check">
+        <input id="f-public" type="checkbox">
+        <span>Bu kitap profilimde herkese görünsün</span>
+      </label>
+
       <button type="button" id="f-delete" class="btn danger block" hidden>Bu kitabı sil</button>
     </div>
   </form>
@@ -290,6 +300,10 @@
   </div>
   <div class="sheet-body">
     <div id="account-box" class="account-box"></div>
+    <div class="menu-actions">
+      <a class="btn block" href="#/profil" data-close>Profilim</a>
+      <a class="btn block" href="#/kesfet" data-close>Keşfet — kitapseverleri bul</a>
+    </div>
     <div class="menu-actions">
       <button type="button" id="btn-export" class="btn block">Yedek al (JSON)</button>
       <button type="button" id="btn-import" class="btn block">Yedekten geri yükle</button>
@@ -360,6 +374,8 @@
 <script src="db.js"></script>
 <script src="sync.js"></script>
 <script src="isbn.js"></script>
+<script src="social.js"></script>
 <script src="app.js"></script>
+<script src="pages.js"></script>
 </body>
 </html>

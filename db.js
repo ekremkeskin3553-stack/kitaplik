@@ -121,6 +121,22 @@
     });
   }
 
+  /** Belirli kayıtları yerelden gerçekten sil (işaretleme değil).
+   *  Yalnızca yereldeki bozuk/yabancı kayıtları temizlemek için; kullanıcının
+   *  sildiği kitaplar için deleted işareti kullanılır. */
+  function removeMany(ids) {
+    if (!ids || !ids.length) return Promise.resolve();
+    return open().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var t = db.transaction('books', 'readwrite');
+        var s = t.objectStore('books');
+        ids.forEach(function (id) { s.delete(id); });
+        t.oncomplete = resolve;
+        t.onerror = function () { reject(t.error); };
+      });
+    });
+  }
+
   /** Yerel depoyu tamamen boşalt (çıkış yaparken). */
   function clearBooks() {
     return tx('books', 'readwrite').then(function (s) { return wrap(s.clear()); });
@@ -145,6 +161,7 @@
     putManyRemote: putManyRemote,
     dirtyBooks: dirtyBooks,
     markClean: markClean,
+    removeMany: removeMany,
     clearBooks: clearBooks,
     getMeta: getMeta,
     setMeta: setMeta,
