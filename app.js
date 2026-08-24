@@ -1036,6 +1036,49 @@
     });
 
     // --- giriş ---
+    $('auth-forgot').addEventListener('click', function () {
+      var email = $('auth-email').value.trim();
+      var msg = $('auth-msg');
+      if (!email) {
+        setMsg(msg, 'Önce e-posta adresini yaz, sonra bu bağlantıya bas.', 'error');
+        $('auth-email').focus();
+        return;
+      }
+      setMsg(msg, 'Sıfırlama bağlantısı gönderiliyor…', '');
+      Sync.requestPasswordReset(email).then(function () {
+        // Bilerek "gönderildi" diyoruz, "bu adres kayıtlı" demiyoruz: aksi
+        // hâlde bu ekran, hangi e-postaların kayıtlı olduğunu öğrenmek için
+        // kullanılabilirdi.
+        setMsg(msg, email + ' adresine bir sıfırlama bağlantısı gönderildi. ' +
+                    'Gelen kutunu (ve spam klasörünü) kontrol et.', 'ok');
+      }).catch(function (e) {
+        setMsg(msg, 'Gönderilemedi: ' + e.message, 'error');
+      });
+    });
+
+    $('newpass-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var p1 = $('newpass-1').value, p2 = $('newpass-2').value;
+      var msg = $('newpass-msg');
+      if (p1.length < 6) { setMsg(msg, 'Parola en az 6 karakter olmalı.', 'error'); return; }
+      if (p1 !== p2) { setMsg(msg, 'İki parola aynı değil.', 'error'); return; }
+
+      $('newpass-submit').disabled = true;
+      setMsg(msg, 'Kaydediliyor…', '');
+      Sync.updatePassword(p1).then(function () {
+        $('newpass-submit').disabled = false;
+        $('newpass-1').value = '';
+        $('newpass-2').value = '';
+        $('newpass-dialog').close();
+        toast('Parolan güncellendi.');
+        refreshBanner();
+        return Sync.sync().then(reloadFromDb);
+      }).catch(function (err) {
+        $('newpass-submit').disabled = false;
+        setMsg(msg, err.message, 'error');
+      });
+    });
+
     $('auth-toggle').addEventListener('click', function () {
       state.authMode = state.authMode === 'signin' ? 'signup' : 'signin';
       paintAuthMode();
@@ -1120,6 +1163,18 @@
   function boot() {
     buildRating();
     wire();
+
+    // Parola sıfırlama bağlantısıyla mı gelindi? Diğer her şeyden önce
+    // bakılmalı: adres çubuğundaki jeton temizlenmeden başka bir akış
+    // başlarsa jeton geçmişte kalır.
+    var recovery = Sync.isConfigured() ? Sync.consumeRecoveryLink() : false;
+    if (recovery === 'recovery') {
+      setTimeout(function () {
+        $('newpass-dialog').showModal();
+        $('newpass-1').focus();
+      }, 300);
+    }
+
     refreshBanner();
     if (!navigator.onLine) setSyncState('offline', 'Çevrimdışı');
 

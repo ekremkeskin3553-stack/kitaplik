@@ -322,6 +322,32 @@
       <div id="auth-msg" class="hint"></div>
       <button type="submit" id="auth-submit" class="btn primary block">Giriş yap</button>
       <button type="button" id="auth-toggle" class="link-btn block">Hesabım yok, kayıt ol</button>
+      <button type="button" id="auth-forgot" class="link-btn block">Parolamı unuttum</button>
+    </div>
+  </form>
+</dialog>
+
+
+<!-- ==================== Yeni parola belirleme ==================== -->
+<dialog id="newpass-dialog" class="sheet auth-sheet">
+  <form id="newpass-form" method="dialog">
+    <div class="sheet-head">
+      <button type="button" class="link-btn" data-close>Vazgeç</button>
+      <strong>Yeni Parola Belirle</strong>
+      <span class="link-btn ghost" aria-hidden="true">Vazgeç</span>
+    </div>
+    <div class="sheet-body">
+      <p class="hint">Sıfırlama bağlantısıyla giriş yaptın. Şimdi yeni bir parola belirle.</p>
+      <label class="field">
+        <span>Yeni parola</span>
+        <input id="newpass-1" type="password" autocomplete="new-password" required minlength="6">
+      </label>
+      <label class="field">
+        <span>Yeni parola (tekrar)</span>
+        <input id="newpass-2" type="password" autocomplete="new-password" required minlength="6">
+      </label>
+      <div id="newpass-msg" class="hint"></div>
+      <button type="submit" id="newpass-submit" class="btn primary block">Parolayı kaydet</button>
     </div>
   </form>
 </dialog>

@@ -112,6 +112,68 @@
       });
   }
 
+  /* ------------------------------------------------------------------
+   * Parola sıfırlama
+   *
+   * Akış: kullanıcı e-postasını yazar → Supabase bir bağlantı yollar →
+   * bağlantıya tıklayınca uygulamaya adres çubuğunda geçici bir jetonla
+   * döner → uygulama bunu tanıyıp yeni parola sorar.
+   * ---------------------------------------------------------------- */
+
+  function requestPasswordReset(email) {
+    // Dönüş adresi Supabase panelindeki "Redirect URLs" listesinde olmalı,
+    // yoksa bağlantı Site URL'e düşer.
+    var redirectTo = location.origin + location.pathname;
+    return authFetch('/recover?redirect_to=' + encodeURIComponent(redirectTo), { email: email })
+      .then(function () { return true; });
+  }
+
+  /** Sıfırlama bağlantısıyla dönüldü mü? Dönüldüyse jetonu oturuma alır.
+   *  Supabase jetonu adres çubuğunun # kısmında yolluyor. */
+  function consumeRecoveryLink() {
+    var hash = location.hash || '';
+    if (hash.indexOf('access_token') === -1) return false;
+
+    var params = new URLSearchParams(hash.replace(/^#/, ''));
+    var token = params.get('access_token');
+    var type = params.get('type');
+    if (!token) return false;
+
+    saveSession({
+      access_token: token,
+      refresh_token: params.get('refresh_token') || '',
+      expires_at: Date.now() + (Number(params.get('expires_in')) || 3600) * 1000,
+      user: null,
+    });
+
+    // Jeton adres çubuğunda kalmasın — geçmişe ve paylaşılan bağlantılara sızar.
+    history.replaceState(null, '', location.pathname + location.search);
+
+    // Kullanıcı bilgisini ayrıca çekiyoruz; bağlantıyla gelen yanıtta yok.
+    fetch(URL_BASE + '/auth/v1/user', { headers: authHeaders() })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (u) {
+        if (u && session) { session.user = u; saveSession(session); }
+      })
+      .catch(function () {});
+
+    return type === 'recovery' ? 'recovery' : 'session';
+  }
+
+  function updatePassword(newPassword) {
+    if (!session) return Promise.reject(new Error('Oturum yok.'));
+    var headers = authHeaders();
+    headers['Content-Type'] = 'application/json';
+    return fetch(URL_BASE + '/auth/v1/user', {
+      method: 'PUT', headers: headers, body: JSON.stringify({ password: newPassword }),
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) throw new Error(j.msg || j.message || j.error_description || 'Parola değiştirilemedi.');
+        return j;
+      });
+    });
+  }
+
   function signOut() {
     var had = !!session;
     saveSession(null);
@@ -293,6 +355,9 @@
     signIn: signIn,
     signUp: signUp,
     signOut: signOut,
+    requestPasswordReset: requestPasswordReset,
+    consumeRecoveryLink: consumeRecoveryLink,
+    updatePassword: updatePassword,
     currentUser: currentUser,
     loadSession: loadSession,
     sync: sync,
