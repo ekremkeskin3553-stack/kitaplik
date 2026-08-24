@@ -702,3 +702,12 @@ a.home-card:hover { border-color: var(--accent); }
   -webkit-tap-highlight-color: transparent;
 }
 .brand-link:hover { opacity: .85; }
+
+/* Reklamlar kapalıyken kabuk TEK sütuna dönmeli.
+   Yan sütunlar display:none olunca ızgaradan çıkıyor ama sütun tanımı
+   (180px / 1fr / 320px) yerinde kaldığı için içerik 180 piksellik ilk
+   sütuna sıkışıyordu. */
+body.ads-off .shell {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0;
+}

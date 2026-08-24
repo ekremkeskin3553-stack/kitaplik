@@ -74,7 +74,12 @@
    * sayısını şişirmemek için doğrusu bu.
    */
   function mount() {
-    if (!enabled) return;
+    if (!enabled) {
+      // Reklamlar tümden kapalıysa kabuk da tek sütuna dönsün; aksi hâlde
+      // boş yan sütunlar yer kaplamaya devam eder.
+      document.body.classList.add('ads-off');
+      return;
+    }
     var eslesme = { 'ad-top': 'top', 'ad-left': 'left', 'ad-right': 'right' };
     Object.keys(eslesme).forEach(function (id) {
       var e = document.getElementById(id);
