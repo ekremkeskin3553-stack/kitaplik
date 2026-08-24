@@ -1,18 +1,19 @@
 /* Kitaplık — reklam alanları
  *
- * Şu an yalnızca yer tutucu ("deneme") reklamlar gösteriliyor. Amaç, düzenin
- * gerçek reklamlarla nasıl görüneceğini şimdiden görmek ve ileride gerçek
- * reklam koduna geçerken sayfaları hiç ellememek.
+ * Şu an yalnızca DENEME reklamları gösteriliyor: içerikleri kurgusal, hiçbir
+ * gerçek markayla ilgisi yok. Amaç, düzenin gerçek reklamlarla nasıl
+ * görüneceğini şimdiden görmek ve ileride gerçek reklam koduna geçerken
+ * sayfaları hiç ellememek.
  *
  * GERÇEK REKLAMA GEÇİŞ
  * --------------------
- * config.js içindeki ADS.provider değerini 'adsense' yap ve client kimliğini
- * gir. Sonra aşağıdaki renderAdsense fonksiyonunu doldur. Sayfaların hiçbiri
- * değişmez; hepsi Ads.slot() çağırıyor.
+ * config.js içindeki ADS.provider değerini 'adsense' yap ve aşağıdaki
+ * renderAdsense fonksiyonunu doldur. Sayfaların hiçbiri değişmez; hepsi
+ * Ads.slot() çağırıyor.
  *
  * NOT: Google AdSense yalnızca web siteleri içindir. Uygulama mağazalarına
  * paketlenmiş bir sürümde AdSense kullanmak kurallara aykırıdır; orada AdMob
- * gerekir. Bu ayrım ileride önem kazanacak.
+ * gerekir.
  */
 
 (function () {
@@ -22,29 +23,52 @@
   var enabled = cfg.enabled !== false;
   var provider = cfg.provider || 'placeholder';
 
-  /* Alan tanımları. Ölçüler yaygın reklam standartlarına göre seçildi ki
-   * gerçek reklamlara geçince düzen kaymasın. */
+  /* Alan ölçüleri yaygın reklam standartlarına göre seçildi ki gerçek
+   * reklamlara geçince düzen kaymasın. */
   var SLOTS = {
-    top:    { ad: 'Üst banner',   olcu: '970×90',  sinif: 'ad-top' },
-    left:   { ad: 'Sol sütun',    olcu: '160×600', sinif: 'ad-rail' },
-    right:  { ad: 'Sağ sütun',    olcu: '300×600', sinif: 'ad-rail' },
-    inline: { ad: 'İçerik arası', olcu: '336×280', sinif: 'ad-inline' },
+    top:    { olcu: '970×90',  sinif: 'ad-top',    bicim: 'yatay' },
+    left:   { olcu: '160×600', sinif: 'ad-rail',   bicim: 'dar-dikey' },
+    right:  { olcu: '300×600', sinif: 'ad-rail',   bicim: 'dikey' },
+    inline: { olcu: '336×280', sinif: 'ad-inline', bicim: 'kare' },
   };
+
+  /* Kurgusal reklam içerikleri. Gerçek bir marka, ürün ya da fiyat değil;
+   * yalnızca düzenin nasıl görüneceğini göstermek için. */
+  var CREATIVES = [
+    { tema: 'mor',    baslik: 'Sayfa Sayfa Yayınevi', alt: 'Yeni çıkanlarda sonbahar indirimi', cta: 'İncele',        simge: '📖' },
+    { tema: 'yesil',  baslik: 'Kahve & Kitap',        alt: 'Şehrin en sessiz okuma köşesi',      cta: 'Yol tarifi',    simge: '☕' },
+    { tema: 'turuncu',baslik: 'Kitap Kutusu',         alt: 'Ayda bir sürpriz kitap kapında',     cta: 'Abone ol',      simge: '📦' },
+    { tema: 'mavi',   baslik: 'Sesli Kitap+',         alt: 'Yolda, koşuda, mutfakta dinle',      cta: 'İlk ay ücretsiz', simge: '🎧' },
+    { tema: 'kirmizi',baslik: 'Okuma Kulübü',         alt: 'Her ay bir kitap, her ay yeni dostlar', cta: 'Katıl',      simge: '💬' },
+    { tema: 'lacivert',baslik: 'Eski Sayfalar',       alt: 'Sahaf koleksiyonu, ikinci el hazineler', cta: 'Keşfet',    simge: '🔖' },
+  ];
 
   function escapeHtml(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  /** Yer tutucu: gerçek reklamın kaplayacağı alanı aynı ölçüde gösterir. */
+  /** Her alan farklı bir reklam göstersin diye sırayla dağıtıyoruz;
+   *  başlangıç noktası rastgele ki her açılışta aynı sıra çıkmasın. */
+  var sayac = Math.floor(Math.random() * CREATIVES.length);
+  function nextCreative() {
+    return CREATIVES[(sayac++) % CREATIVES.length];
+  }
+
   function renderPlaceholder(key) {
     var s = SLOTS[key];
+    var c = nextCreative();
+
     return '' +
-      '<div class="ad-slot ' + s.sinif + '" data-slot="' + key + '" aria-hidden="true">' +
-        '<div class="ad-inner">' +
-          '<span class="ad-label">REKLAM</span>' +
-          '<span class="ad-size">' + escapeHtml(s.ad) + ' · ' + escapeHtml(s.olcu) + '</span>' +
-          '<span class="ad-note">deneme alanı</span>' +
+      '<div class="ad-slot ' + s.sinif + ' ad-' + c.tema + ' ad-' + s.bicim + '" ' +
+           'data-slot="' + key + '" role="complementary" aria-label="Deneme reklam alanı">' +
+        '<span class="ad-flag">DENEME</span>' +
+        '<div class="ad-body">' +
+          '<span class="ad-emoji" aria-hidden="true">' + c.simge + '</span>' +
+          '<span class="ad-head">' + escapeHtml(c.baslik) + '</span>' +
+          '<span class="ad-sub">' + escapeHtml(c.alt) + '</span>' +
+          '<span class="ad-cta">' + escapeHtml(c.cta) + '</span>' +
         '</div>' +
+        '<span class="ad-size">' + escapeHtml(s.olcu) + '</span>' +
       '</div>';
   }
 
@@ -52,15 +76,10 @@
    *  Şu an bilinçli olarak boş: yanlış yapılandırılmış bir reklam kodu
    *  sayfayı bozabileceği için, hazır olmadan devreye girmemeli. */
   function renderAdsense(key) {
-    console.warn('[reklam] AdSense henüz yapılandırılmadı, yer tutucu gösteriliyor:', key);
+    console.warn('[reklam] AdSense henüz yapılandırılmadı, deneme reklamı gösteriliyor:', key);
     return renderPlaceholder(key);
   }
 
-  /**
-   * Bir reklam alanının HTML'ini döndürür.
-   * @param {'top'|'left'|'right'|'inline'} key
-   * @returns {string} kapalıysa boş metin
-   */
   function slot(key) {
     if (!enabled || !SLOTS[key]) return '';
     if (provider === 'adsense') return renderAdsense(key);
@@ -71,7 +90,7 @@
    * Sayfadaki sabit reklam alanlarını bir kez doldurur.
    * Alanlar sayfa değişse de yerinde kaldığı için reklamlar her gezinmede
    * yeniden yüklenmez — hem daha hızlı, hem gerçek reklamlarda gösterim
-   * sayısını şişirmemek için doğrusu bu.
+   * sayısını yapay olarak şişirmemek için doğrusu bu.
    */
   function mount() {
     if (!enabled) {
