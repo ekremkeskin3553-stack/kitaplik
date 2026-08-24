@@ -3,7 +3,8 @@
  * Uygulama tek sayfaydı; artık birden çok ekran var. Derleme adımı ve
  * kütüphane eklemeden, adres çubuğunun # kısmıyla yönlendirme yapıyoruz:
  *
- *   #/            kitaplığım (varsayılan)
+ *   #/            ana sayfa
+ *   #/kitaplarim  kendi kitaplığım
  *   #/kesfet      insanları keşfet / ara
  *   #/profil      kendi profilim (düzenlenebilir)
  *   #/u/<ad>      birinin profili ve herkese açık rafı
@@ -76,6 +77,91 @@
   function wireBack() {
     var b = $('page-back');
     if (b) b.addEventListener('click', function () { location.hash = '#/'; });
+  }
+
+  /* ==================================================================
+   * ANA SAYFA
+   * ================================================================ */
+  function renderHome() {
+    var u = Sync.currentUser();
+
+    var kartlar =
+      '<a class="home-card" href="#/kitaplarim">' +
+        '<span class="home-card-icon">📚</span>' +
+        '<span class="home-card-text"><strong>Kitaplığım</strong>' +
+        '<span id="home-book-count">yükleniyor…</span></span>' +
+      '</a>' +
+      '<a class="home-card" href="#/kesfet">' +
+        '<span class="home-card-icon">👥</span>' +
+        '<span class="home-card-text"><strong>Keşfet</strong>' +
+        '<span>Kitapseverleri bul, raflarına bak</span></span>' +
+      '</a>' +
+      '<a class="home-card" href="#/profil">' +
+        '<span class="home-card-icon">🪪</span>' +
+        '<span class="home-card-text"><strong>Profilim</strong>' +
+        '<span>Kullanıcı adın ve görünürlük ayarların</span></span>' +
+      '</a>' +
+      '<span class="home-card home-card-soon">' +
+        '<span class="home-card-icon">💬</span>' +
+        '<span class="home-card-text"><strong>Kitap Kulüpleri</strong>' +
+        '<span>Yakında — altyapısı hazır</span></span>' +
+      '</span>' +
+      '<span class="home-card home-card-soon">' +
+        '<span class="home-card-icon">🔁</span>' +
+        '<span class="home-card-text"><strong>İkinci El İlanlar</strong>' +
+        '<span>Yakında</span></span>' +
+      '</span>';
+
+    var icerik =
+      '<section class="home-hero">' +
+        '<h2>Kitaplığın, cebinde.</h2>' +
+        '<p>Barkodla ekle, raflara ayır, okuduklarını takip et; istersen ' +
+          'raflarını paylaş ve başka kitapseverleri keşfet.</p>' +
+        (u ? '' :
+          '<button class="btn primary" id="home-login">Giriş yap / Kayıt ol</button>') +
+      '</section>' +
+      '<div class="home-grid">' + kartlar + '</div>' +
+      '<div id="home-stats" class="home-stats"></div>' +
+      (window.Ads ? Ads.slot('inline') : '') +
+      '<section class="home-about">' +
+        '<h3>Nasıl çalışır?</h3>' +
+        '<ol>' +
+          '<li><b>Ekle:</b> kitabın arkasındaki barkodu okut, künye kendiliğinden dolsun.</li>' +
+          '<li><b>Düzenle:</b> raf adı ver, okuduğun sayfayı işaretle, ödünç verdiğini not et.</li>' +
+          '<li><b>Paylaş:</b> istediğin kitapları herkese açıp profilinde sergile.</li>' +
+        '</ol>' +
+      '</section>';
+
+    el().innerHTML = icerik;
+
+    var lg = $('home-login');
+    if (lg) lg.addEventListener('click', function () {
+      if (window.KitaplikApp && KitaplikApp.openAuth) KitaplikApp.openAuth();
+    });
+
+    // Sayıları yerel veriden doldur — sunucuya gitmeye gerek yok.
+    DB.allBooks().then(function (all) {
+      var live = all.filter(function (b) { return !b.deleted; });
+      var okundu = 0, okunuyor = 0, sayfa = 0, acik = 0;
+      live.forEach(function (b) {
+        var p = Search.progressOf(b);
+        if (p >= 1) okundu++; else if (p > 0) okunuyor++;
+        sayfa += Number(b.current_page) || 0;
+        if (b.is_public) acik++;
+      });
+
+      var c = $('home-book-count');
+      if (c) c.textContent = live.length ? live.length + ' kitap · ' + acik + ' tanesi herkese açık'
+                                         : 'Henüz kitap yok — ilkini ekle';
+      var s = $('home-stats');
+      if (s && live.length) {
+        s.innerHTML =
+          '<div class="stat"><b>' + live.length + '</b><span>kitap</span></div>' +
+          '<div class="stat"><b>' + okundu + '</b><span>okundu</span></div>' +
+          '<div class="stat"><b>' + okunuyor + '</b><span>okunuyor</span></div>' +
+          '<div class="stat"><b>' + sayfa.toLocaleString('tr') + '</b><span>sayfa</span></div>';
+      }
+    });
   }
 
   function avatarHtml(p, size) {
@@ -422,12 +508,22 @@
     var parts = hash.replace(/^#\/?/, '').split('/');
     var page = parts[0] || '';
 
-    if (!page) { showLibrary(true); el().innerHTML = ''; return; }
+    // Kitaplık ekranı uygulamanın kendi DOM'unda duruyor; diğer sayfalar
+    // social-view kabına çiziliyor. Bu yüzden geçiş iki adımlı.
+    if (window.Ads) Ads.setLibraryMode(page === 'kitaplarim');
+
+    if (page === 'kitaplarim') {
+      showLibrary(true);
+      el().innerHTML = '';
+      window.scrollTo(0, 0);
+      return;
+    }
 
     showLibrary(false);
     el().scrollTop = 0;
     window.scrollTo(0, 0);
 
+    if (!page) return renderHome();
     if (page === 'kesfet') return renderDiscover();
     if (page === 'profil') return renderMyProfile();
     if (page === 'u' && parts[1]) return renderUser(decodeURIComponent(parts[1]));

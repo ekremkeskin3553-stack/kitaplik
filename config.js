@@ -26,4 +26,21 @@ window.KITAPLIK_CONFIG = {
 
   // ISBN ile künye araması için kullanılacak kaynaklar (sırayla denenir).
   LOOKUP_SOURCES: ['google', 'openlibrary'],
+
+  /* Reklam alanları.
+   *   enabled  : false yaparsan tüm reklam alanları kaybolur
+   *   provider : 'placeholder' → deneme alanları
+   *              'adsense'     → gerçek reklamlar (ads.js içinde doldurulmalı)
+   *   inLibrary: kendi kitaplığında da reklam gösterilsin mi
+   *
+   * Not: Kişisel kitaplık, kullanıcının kendi verisiyle baş başa olduğu yer.
+   * Oraya reklam koymak dönüşüm getirmez ama rahatsızlık verir; varsayılan
+   * olarak kapalı bırakıldı. Ziyaretçi trafiği zaten ana sayfa, keşfet ve
+   * profil sayfalarında.
+   */
+  ADS: {
+    enabled: true,
+    provider: 'placeholder',
+    inLibrary: false,
+  },
 };

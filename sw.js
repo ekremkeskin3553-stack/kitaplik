@@ -8,7 +8,7 @@
  * eski önbellek temizlenir ve kullanıcı yeni sürümü alır.
  */
 
-var CACHE = 'kitaplik-v8';
+var CACHE = 'kitaplik-v9';
 var COVERS = 'kitaplik-covers-v1';
 
 // Yollar göreli: uygulama alan adının kökünde de, /kitaplik/ alt yolunda da
@@ -24,6 +24,7 @@ var SHELL = [
   './ean.js',
   './isbn.js',
   './social.js',
+  './ads.js',
   './app.js',
   './pages.js',
   './manifest.webmanifest',

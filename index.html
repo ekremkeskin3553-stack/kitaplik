@@ -19,8 +19,10 @@
 <header class="topbar">
   <div class="topbar-row">
     <h1 class="brand">
-      <svg viewBox="0 0 24 24" aria-hidden="true" class="brand-icon"><path d="M4 4h5a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H4zM20 4h-5a3 3 0 0 0-3 3v13a2.5 2.5 0 0 1 2.5-2.5H20z"/></svg>
-      Kitaplık
+      <a href="#/" class="brand-link" aria-label="Ana sayfa">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="brand-icon"><path d="M4 4h5a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H4zM20 4h-5a3 3 0 0 0-3 3v13a2.5 2.5 0 0 1 2.5-2.5H20z"/></svg>
+        Kitaplık
+      </a>
     </h1>
     <div class="topbar-actions">
       <a id="btn-discover" class="icon-btn" href="#/kesfet" title="Keşfet" aria-label="Keşfet">
@@ -77,13 +79,24 @@
 
 <div id="banner" class="banner" hidden></div>
 
-<main>
-  <div id="stats" class="stats" hidden></div>
-  <div id="list" class="list" aria-live="polite"></div>
-  <div id="empty" class="empty" hidden></div>
-</main>
+<!-- Reklam kabuğu: yan sütunlar yalnızca geniş ekranda görünür (CSS),
+     üst banner her ekranda. İçerik hem kitaplık hem sosyal sayfalar. -->
+<div id="ad-top" class="ad-zone"></div>
 
-<div id="social-view" class="social-view" hidden></div>
+<div class="shell">
+  <aside id="ad-left" class="shell-rail ad-zone"></aside>
+
+  <div class="shell-main">
+    <main>
+      <div id="stats" class="stats" hidden></div>
+      <div id="list" class="list" aria-live="polite"></div>
+      <div id="empty" class="empty" hidden></div>
+    </main>
+    <div id="social-view" class="social-view" hidden></div>
+  </div>
+
+  <aside id="ad-right" class="shell-rail ad-zone"></aside>
+</div>
 
 <div class="fab-row" id="fab-row">
   <button id="btn-scan" class="fab fab-secondary" title="Barkod tara" aria-label="Barkod tara">
@@ -375,6 +388,7 @@
 <script src="sync.js"></script>
 <script src="isbn.js"></script>
 <script src="social.js"></script>
+<script src="ads.js"></script>
 <script src="app.js"></script>
 <script src="pages.js"></script>
 </body>

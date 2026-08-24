@@ -591,3 +591,114 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .card-static:hover { border-color: var(--line); }
 
 .social-view .list { padding: 0; }
+
+/* ============================================================================
+   Düzen kabuğu ve reklam alanları
+   Yan sütunlar yalnızca geniş ekranda; dar ekranda içerik tam genişlik alır.
+   ========================================================================== */
+
+.shell {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  max-width: 1600px;
+  margin: 0 auto;
+  align-items: start;
+}
+.shell-main { min-width: 0; }
+.shell-rail { display: none; }
+
+/* Yan sütunlar ancak burada sığıyor: 2×180 reklam + 700 içerik + boşluklar */
+@media (min-width: 1180px) {
+  .shell {
+    grid-template-columns: 180px minmax(0, 1fr) 320px;
+    padding: 0 16px;
+  }
+  .shell-rail { display: block; position: sticky; top: 96px; }
+}
+
+.ad-zone { }
+body.ads-off .ad-zone { display: none; }
+
+.ad-slot {
+  display: grid;
+  place-items: center;
+  background: repeating-linear-gradient(
+    45deg, var(--surface-2), var(--surface-2) 10px,
+    transparent 10px, transparent 20px);
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  color: var(--text-faint);
+  overflow: hidden;
+}
+.ad-inner { display: grid; gap: 2px; text-align: center; padding: 8px; }
+.ad-label { font-size: 10px; font-weight: 700; letter-spacing: .18em; }
+.ad-size { font-size: 12px; }
+.ad-note { font-size: 10.5px; opacity: .75; }
+
+.ad-top { margin: 10px 12px 0; min-height: 90px; }
+.ad-rail { min-height: 600px; }
+#ad-right .ad-rail { min-height: 600px; }
+.ad-inline { min-height: 250px; margin: 4px 0; }
+
+@media (max-width: 640px) {
+  .ad-top { min-height: 70px; }
+}
+
+/* ============================================================================
+   Ana sayfa
+   ========================================================================== */
+
+.home-hero {
+  padding: 22px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  display: grid; gap: 8px; justify-items: start;
+}
+.home-hero h2 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+.home-hero p { margin: 0; color: var(--text-dim); font-size: 14.5px; line-height: 1.55; }
+.home-hero .btn { margin-top: 4px; }
+
+.home-grid { display: grid; gap: 8px; }
+@media (min-width: 620px) { .home-grid { grid-template-columns: 1fr 1fr; } }
+
+.home-card {
+  display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: center;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  text-decoration: none; color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+a.home-card:hover { border-color: var(--accent); }
+.home-card-icon { font-size: 26px; line-height: 1; text-align: center; }
+.home-card-text { display: grid; gap: 2px; min-width: 0; }
+.home-card-text strong { font-size: 15.5px; }
+.home-card-text span { font-size: 12.5px; color: var(--text-dim); }
+.home-card-soon { opacity: .6; }
+
+.home-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.home-stats .stat {
+  padding: 12px 6px; text-align: center;
+  background: var(--surface-2); border-radius: 12px;
+}
+.home-stats .stat b { display: block; font-size: 19px; font-variant-numeric: tabular-nums; }
+.home-stats .stat span { font-size: 11.5px; color: var(--text-dim); }
+
+.home-about {
+  padding: 16px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius);
+}
+.home-about h3 { margin: 0 0 8px; font-size: 15px; }
+.home-about ol { margin: 0; padding-left: 20px; display: grid; gap: 6px;
+  font-size: 14px; color: var(--text-dim); line-height: 1.5; }
+.home-about b { color: var(--text); }
+
+.brand-link {
+  display: flex; align-items: center; gap: 8px;
+  color: inherit; text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.brand-link:hover { opacity: .85; }
