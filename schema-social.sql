@@ -155,6 +155,26 @@ drop trigger if exists clubs_touch on public.clubs;
 create trigger clubs_touch before update on public.clubs
   for each row execute function public.touch_updated_at();
 
+/* Kulübü kuran kişi kendiliğinden 'owner' rolüyle üye yapılır.
+   Bu olmadan kurucu kendi kulübünün dışında kalıyor: gizli bir kulüpte
+   üyelik satırı olmadığı için kulübü göremiyor, göremediği için de üye
+   ekleyemiyor — kilitli bir döngü. SECURITY DEFINER, çünkü tetikleyici
+   çalıştığı anda kurucunun club_members'a yazma yetkisi henüz yok. */
+create or replace function public.add_club_owner()
+returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.club_members (club_id, user_id, role)
+  values (new.id, new.owner_id, 'owner')
+  on conflict (club_id, user_id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists clubs_add_owner on public.clubs;
+create trigger clubs_add_owner after insert on public.clubs
+  for each row execute function public.add_club_owner();
+
 create table if not exists public.club_members (
   club_id   uuid not null references public.clubs (id) on delete cascade,
   user_id   uuid not null references auth.users (id) on delete cascade,
@@ -330,17 +350,24 @@ create policy "kendi kitaplarını gör" on public.books for select
   );
 
 -- --- kulüpler ----------------------------------------------------------
+-- owner_id kontrolü, üyelik satırından bağımsız olarak da yazıldı: kayıt
+-- eklenirken PostgREST oluşan satırı geri okuyor ve o an üyelik tetikleyicisi
+-- henüz görünür olmayabiliyor. Sahibin kendi kulübünü her hâlükârda görmesi
+-- zaten doğru davranış.
 drop policy if exists "kulup gor" on public.clubs;
 create policy "kulup gor" on public.clubs for select
-  using (not is_removed and (is_public or public.is_club_member(id, auth.uid())));
+  using (
+    not is_removed
+    and (is_public or owner_id = auth.uid() or public.is_club_member(id, auth.uid()))
+  );
 
 drop policy if exists "kulup kur" on public.clubs;
 create policy "kulup kur" on public.clubs for insert with check (owner_id = auth.uid());
 
 drop policy if exists "kulup duzenle" on public.clubs;
 create policy "kulup duzenle" on public.clubs for update
-  using (public.club_role(id, auth.uid()) in ('owner','moderator'))
-  with check (public.club_role(id, auth.uid()) in ('owner','moderator'));
+  using (owner_id = auth.uid() or public.club_role(id, auth.uid()) in ('owner','moderator'))
+  with check (owner_id = auth.uid() or public.club_role(id, auth.uid()) in ('owner','moderator'));
 
 drop policy if exists "kulup sil" on public.clubs;
 create policy "kulup sil" on public.clubs for delete using (owner_id = auth.uid());
@@ -359,6 +386,7 @@ create policy "kulube katil" on public.club_members for insert
       select 1 from public.clubs c where c.id = club_id and c.is_public and not c.is_removed
     ))
     or public.club_role(club_id, auth.uid()) in ('owner','moderator')
+    or exists (select 1 from public.clubs c where c.id = club_id and c.owner_id = auth.uid())
   );
 
 drop policy if exists "uyelikten cik" on public.club_members;
