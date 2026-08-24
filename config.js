@@ -33,14 +33,12 @@ window.KITAPLIK_CONFIG = {
    *              'adsense'     → gerçek reklamlar (ads.js içinde doldurulmalı)
    *   inLibrary: kendi kitaplığında da reklam gösterilsin mi
    *
-   * Not: Kişisel kitaplık, kullanıcının kendi verisiyle baş başa olduğu yer.
-   * Oraya reklam koymak dönüşüm getirmez ama rahatsızlık verir; varsayılan
-   * olarak kapalı bırakıldı. Ziyaretçi trafiği zaten ana sayfa, keşfet ve
-   * profil sayfalarında.
+   * inLibrary false yapılırsa kitaplık ekranı tam genişlik, reklamsız
+   * çalışır; kabuk tek sütuna döner.
    */
   ADS: {
     enabled: true,
     provider: 'placeholder',
-    inLibrary: false,
+    inLibrary: true,
   },
 };
